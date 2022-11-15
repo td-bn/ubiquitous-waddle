@@ -1,11 +1,11 @@
 import React from "react";
 
 // We'll use ethers to interact with the Ethereum network and our contract
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 // We import the contract's artifacts and address here, as we are going to be
 // using them with ethers
-import TokenArtifact from "../contracts/Token.json";
+import TokenArtifact from "../contracts/Eleven55.json"
 import contractAddress from "../contracts/contract-address.json";
 
 // All the logic of this dapp is contained in the Dapp component.
@@ -94,7 +94,7 @@ export class Dapp extends React.Component {
         <div className="row">
           <div className="col-12">
             <h1>
-              {this.state.tokenData.name} ({this.state.tokenData.symbol})
+              {this.state.tokenData.name}
             </h1>
             <p>
               Welcome <b>{this.state.selectedAddress}</b>, you have{" "}
@@ -103,6 +103,9 @@ export class Dapp extends React.Component {
               </b>
               .
             </p>
+            {
+              <span>Token Data<p>{JSON.stringify(this.state.tokenData)}</p></span>
+            }
           </div>
         </div>
 
@@ -230,7 +233,7 @@ export class Dapp extends React.Component {
     // Then, we initialize the contract using that provider and the token's
     // artifact. You can do this same thing with your contracts.
     this._token = new ethers.Contract(
-      contractAddress.Token,
+      contractAddress.Eleven55,
       TokenArtifact.abi,
       this._provider.getSigner(0)
     );
@@ -258,15 +261,21 @@ export class Dapp extends React.Component {
   // The next two methods just read from the contract and store the results
   // in the component state.
   async _getTokenData() {
-    const name = await this._token.name();
-    const symbol = await this._token.symbol();
 
-    this.setState({ tokenData: { name, symbol } });
+    const uri = await this._token.uri(0);
+    const token = await fetch(uri);
+    const data = await token.json();
+    console.log(data);
+
+    // TODO: Set token data
+    this.setState({tokenData: {
+      ...data
+    }});
   }
 
   async _updateBalance() {
-    const balance = await this._token.balanceOf(this.state.selectedAddress);
-    this.setState({ balance });
+    // TODO: Set balance
+    this.setState({ balance: await this._token.balanceOf(this.state.selectedAddress, 0)});
   }
 
   // This method sends an ethereum transaction to transfer tokens.
@@ -294,7 +303,8 @@ export class Dapp extends React.Component {
 
       // We send the transaction, and save its hash in the Dapp's state. This
       // way we can indicate that we are waiting for it to be mined.
-      const tx = await this._token.transfer(to, amount);
+      // const tx = await this._token.transfer(to, amount);
+      const tx = await this._token.safeTransferFrom(this.state.selectedAddress, to, 0, amount, []);
       this.setState({ txBeingSent: tx.hash });
 
       // We use .wait() to wait for the transaction to be mined. This method
